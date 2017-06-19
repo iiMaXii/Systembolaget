@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Systembolaget</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.11.1/bootstrap-table.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="{{ url_for('static', filename='filter-control/bootstrap-table-filter-control.css') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-table/1.11.1/bootstrap-table.min.js" crossorigin="anonymous"></script>
+    <script src="{{ url_for('static', filename='filter-control/bootstrap-table-filter-control.js') }}"></script>
+  </head>
+  <body>
+    <table id="table"
+           data-toggle="table"
+           data-search="true"
+           data-show-refresh="true"
+           data-show-toggle="true"
+           data-show-columns="true"
+           data-show-export="true"
+           data-detail-view="true"
+           data-detail-formatter="detailFormatter"
+           data-minimum-count-columns="2"
+           data-show-pagination-switch="true"
+           data-pagination="true"
+           data-id-field="id"
+           data-page-list="[5, 10, 25, 50, 100, 250]"
+           data-side-pagination="server"
+           data-url="/items"
+           data-filter-control="true">
+      <thead>
+        <tr>{% for c in columns %}<th data-field="{{ c.identifier }}"{% if c.identifier != 'URL' %} data-sortable="true"{% endif %}{% if c.type == 'CATEGORY' %} data-filter-control="select" data-filter-data="url:/category/{{ c.identifier }}"{% endif %}{% if c.type == 'URL' %} data-formatter="urlFormatter"{% endif %}{% if not c.visible %} data-visible="false"{% endif %}>{{ c.name }}</th>{% endfor %}</tr>
+      </thead>
+    </table>
+    <script>
+      function urlFormatter(value) {
+        return '<a href='+value+'>'+value+'</a>';
+      }
+    </script>
+  </body>
+</html>
