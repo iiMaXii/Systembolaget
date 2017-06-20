@@ -8,8 +8,12 @@ from flask import render_template
 from flask import jsonify
 from flask import request
 
-
-import systembolaget_parser
+from common import PROPERTY_TYPES_2
+from common import SystembolagetProperty
+from common import PropertyType
+from common import get_property_by_identifier
+from common import format_value
+from systembolaget_parser import get_url
 
 app = Flask(__name__)
 
@@ -25,8 +29,8 @@ def parse_int(s: str, default: int):
 def get_index():
     # TODO maybe add URL to PROPERTY_TYPES_2
     # TODO add type_name
-    prop_types = copy.deepcopy(systembolaget_parser.PROPERTY_TYPES_2)
-    prop_types.append(systembolaget_parser.SystembolagetProperty('url', systembolaget_parser.PropertyType.URL, 'URL', True))
+    prop_types = copy.deepcopy(PROPERTY_TYPES_2)
+    prop_types.append(SystembolagetProperty('url', PropertyType.URL, 'URL', True))
 
     for p in prop_types:
         p.type = p.type.name
@@ -39,8 +43,8 @@ def get_category(category_identifier):
     connection = sqlite3.connect('sortiment.db')
     cur = connection.cursor()
 
-    prop = systembolaget_parser.get_property_by_identifier(category_identifier)
-    if not prop or prop.type != systembolaget_parser.PropertyType.CATEGORY:
+    prop = get_property_by_identifier(category_identifier)
+    if not prop or prop.type != PropertyType.CATEGORY:
         return jsonify([])
 
     # Todo: Possible future SQL injection
@@ -60,9 +64,9 @@ def get_items():
     limit = parse_int(request.args.get('limit'), -1)
     sort = request.args.get('sort')
 
-    prop = systembolaget_parser.get_property_by_identifier(sort)
+    prop = get_property_by_identifier(sort)
     if not prop:
-        sort = systembolaget_parser.first(systembolaget_parser.PROPERTY_TYPES_2).identifier
+        sort = PROPERTY_TYPES_2[0].identifier
 
     order = 'desc' if request.args.get('order') == 'desc' else 'asc'
 
@@ -77,7 +81,8 @@ def get_items():
             request_filter_input = {}
 
         for category, identifier in request_filter_input.items():
-            if category not in systembolaget_parser.PROPERTY_TYPES.keys() or systembolaget_parser.PROPERTY_TYPES[category] != systembolaget_parser.PropertyType.CATEGORY:
+            prop = get_property_by_identifier(category)
+            if not prop or prop.type != PropertyType.CATEGORY:
                 continue
 
             request_filter[category] = identifier
@@ -88,8 +93,8 @@ def get_items():
     cols = []
     tables = ['sortiment']
 
-    for p in systembolaget_parser.PROPERTY_TYPES_2:
-        if p.type == systembolaget_parser.PropertyType.CATEGORY:
+    for p in PROPERTY_TYPES_2:
+        if p.type == PropertyType.CATEGORY:
             cols.append('kategori_{}.Name'.format(p.identifier))
             tables.append('JOIN kategori_{} ON kategori_{}.ID = sortiment.{}'.format(p.identifier, p.identifier, p.identifier))
         else:
@@ -115,14 +120,13 @@ def get_items():
     data = []
     for row in q:
         row_data = {}
-        for raw_value, p in zip(row, systembolaget_parser.PROPERTY_TYPES_2):
-            value = systembolaget_parser.format_value(raw_value, p.type)
+        for raw_value, p in zip(row, PROPERTY_TYPES_2):
+            value = format_value(raw_value, p.type)
 
             row_data[p.identifier] = value
 
-        row_data['url'] = systembolaget_parser.get_url(row_data['nr'],
-                                                       row_data['Varugrupp'],
-                                                       row_data['Namn'])
+        row_data['url'] = get_url(row_data['nr'], row_data['Varugrupp'],
+                                  row_data['Namn'])
         data.append(row_data)
 
     response = {
