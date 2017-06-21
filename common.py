@@ -145,12 +145,13 @@ def format_value(value, property_type: PropertyType):
 
 
 def get_type_str(property_type: PropertyType) -> str:
-    if (property_type == PropertyType.CATEGORY or
-            property_type == PropertyType.PERCENTAGE or
-            property_type == PropertyType.PRICE or
-            property_type == PropertyType.PRICE_PER_LITER or
-            property_type == PropertyType.ALCOHOL_PER_SEK or
-            property_type == PropertyType.VOLUME):
+    if property_type == PropertyType.CATEGORY:
+        return 'TEXT'
+    elif (property_type == PropertyType.PERCENTAGE or
+          property_type == PropertyType.PRICE or
+          property_type == PropertyType.PRICE_PER_LITER or
+          property_type == PropertyType.ALCOHOL_PER_SEK or
+          property_type == PropertyType.VOLUME):
         return 'INTEGER'
 
     return property_type.name

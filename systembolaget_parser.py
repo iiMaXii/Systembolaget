@@ -54,46 +54,14 @@ def calculate_alcohol_per_sek(volume: int, price: int,
 def create_tables(conn: sqlite3.Connection):
     expr = []
     for p in PROPERTY_TYPES_2:
-        if p.type == PropertyType.CATEGORY:
-            e = '{} {} DEFAULT 0 NOT NULL'.format(p.identifier,
-                                                  common.get_type_str(p.type))
-        else:
-            e = '{} {}'.format(p.identifier, common.get_type_str(p.type))
+        expr.append('{} {}'.format(p.identifier, common.get_type_str(p.type)))
 
-        expr.append(e)
-
-    expr.append('PRIMARY KEY ({})'
-                .format(PROPERTY_TYPES_2[0].identifier))
-
-    category_tables = []
-    for p in PROPERTY_TYPES_2:
-        if p.type == PropertyType.CATEGORY:
-            expr.append('FOREIGN KEY ({}) REFERENCES kategori_{}(ID)'
-                        .format(p.identifier, p.identifier))
-
-            category_tables.append('CREATE TABLE kategori_{} (ID INTEGER, '
-                                   'Name TEXT, PRIMARY KEY (ID))'
-                                   .format(p.identifier))
+    expr.append('PRIMARY KEY ({})'.format(PROPERTY_TYPES_2[0].identifier))
 
     cursor = conn.cursor()
-    for cat in category_tables:
-        cursor.execute(cat)
-
-    main_table = ('CREATE TABLE sortiment ({})'
-                  .format(', \n'.join(expr)))
+    main_table = ('CREATE TABLE sortiment ({})'.format(', \n'.join(expr)))
 
     cursor.execute(main_table)
-
-    conn.commit()
-
-
-def add_categories(conn: sqlite3.Connection, items: SystembolagetSortiment):
-    cur = conn.cursor()
-
-    for category, values in items.property_categories.items():
-        cur.executemany('INSERT INTO kategori_{}(ID, Name) values (?, ?)'
-                        .format(category), enumerate(values))
-
     conn.commit()
 
 
@@ -106,8 +74,6 @@ def add_items(conn: sqlite3.Connection, items: SystembolagetSortiment):
         for p in PROPERTY_TYPES_2:
             if p.identifier in item:
                 row.append(item[p.identifier])
-            elif p.type == PropertyType.CATEGORY:
-                row.append(0)
             else:
                 row.append(None)
 
@@ -115,7 +81,7 @@ def add_items(conn: sqlite3.Connection, items: SystembolagetSortiment):
 
     cur.executemany('INSERT INTO sortiment({}) values ({})'
                     .format(', '.join([p.identifier for p in PROPERTY_TYPES_2]),
-                            ', '.join('?'*len(PROPERTY_TYPES_2))),
+                            ', '.join('?' * len(PROPERTY_TYPES_2))),
                     insertion_list)
 
     conn.commit()
@@ -135,17 +101,12 @@ def parse_property(property_value: str, property_type: PropertyType,
         return int(property_value[:-3] + property_value[-2:])
     elif property_type == PropertyType.BOOLEAN:
         return bool(int(property_value))
-    elif property_type == PropertyType.CATEGORY:
-        if (property_name not in property_categories or
-                property_value not in property_categories[property_name]):
-            return 0
-        return property_categories[property_name].index(property_value)
     elif property_type == PropertyType.PERCENTAGE:
         if not property_value.endswith('%') or property_value[-4] != '.':
             raise Exception('Malformed percentage property')
 
         return int(property_value[:-4] + property_value[-3:-1])
-    else:  # TEXT, DATE
+    else:  # TEXT, DATE, CATEGORY
         return property_value
 
 
@@ -200,7 +161,6 @@ if __name__ == "__main__":
 
     items = get_items('Sortimentsfilen.xml')
 
-    add_categories(conn, items)
     add_items(conn, items)
 
     conn.close()

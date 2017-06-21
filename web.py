@@ -27,7 +27,6 @@ def parse_int(s: str, default: int):
 
 @app.route('/')
 def get_index():
-    # TODO maybe add URL to PROPERTY_TYPES_2
     # TODO add type_name
     prop_types = copy.deepcopy(PROPERTY_TYPES_2)
     prop_types.append(SystembolagetProperty('url', PropertyType.URL, 'URL', True))
@@ -48,13 +47,14 @@ def get_category(category_identifier):
         return jsonify([])
 
     # Todo: Possible future SQL injection
-    q = cur.execute('SELECT ID, Name FROM kategori_{}'.format(category_identifier))
+    q = cur.execute('SELECT DISTINCT {category} FROM sortiment WHERE '
+                    '{category} IS NOT NULL'
+                    .format(category=category_identifier))
     filter_list = {}
     for row in q:
-        filter_list[int(row[0])] = row[1]  # int() unnecessary?
+        filter_list[row[0]] = row[0]
 
     connection.close()
-
     return jsonify(filter_list)
 
 
@@ -86,36 +86,29 @@ def get_items():
                 continue
 
             request_filter[category] = identifier
+            print(request_filter)
 
     connection = sqlite3.connect('sortiment.db')
     cur = connection.cursor()
 
-    cols = []
-    tables = ['sortiment']
+    #cols = [p.identifier for p in PROPERTY_TYPES_2]
 
-    for p in PROPERTY_TYPES_2:
-        if p.type == PropertyType.CATEGORY:
-            cols.append('kategori_{}.Name'.format(p.identifier))
-            tables.append('JOIN kategori_{} ON kategori_{}.ID = sortiment.{}'.format(p.identifier, p.identifier, p.identifier))
-        else:
-            cols.append('sortiment.{}'.format(p.identifier))
-
-    # Todo: Possible future SQL injection
     where_clause = ''
     if request_filter:
         # Todo: Possible future SQL injection
         where_clause += ' WHERE '
-        where_clause += ' AND '.join(['{} = {}'.format(name, value) for name, value in request_filter.items()])
+        where_clause += ' AND '.join(["{}='{}'".format(name, value) for name, value in request_filter.items()])
 
     # Count records
     cur.execute('SELECT COUNT(*) FROM sortiment {}'.format(where_clause))
     total_records = cur.fetchone()[0]
 
     # Grab records
-    print(cols)
-    query_str = 'SELECT {} FROM {} {} ORDER BY {} {} LIMIT {} OFFSET {}'.format(', '.join(cols), ' '.join(tables), where_clause, sort, order, limit, offset)
+    # Todo: Possible future SQL injection
+    query_str = 'SELECT * FROM sortiment {} ORDER BY ? {} LIMIT ? OFFSET ?'.format(where_clause, order)
     print(query_str)
-    q = cur.execute(query_str)
+    print((sort, limit, offset))
+    q = cur.execute(query_str, (sort, limit, offset))
 
     data = []
     for row in q:
