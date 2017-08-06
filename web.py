@@ -49,7 +49,7 @@ def get_category(category_identifier):
     # Todo: Possible future SQL injection
     q = cur.execute('SELECT DISTINCT {category} FROM sortiment WHERE '
                     '{category} IS NOT NULL'
-                    .format(category=category_identifier))
+                    .format(category=prop.identifier))
     filter_list = {}
     for row in q:
         filter_list[row[0]] = row[0]
@@ -62,13 +62,13 @@ def get_category(category_identifier):
 def get_items():
     offset = parse_int(request.args.get('offset'), 0)
     limit = parse_int(request.args.get('limit'), -1)
-    sort = request.args.get('sort')
 
+    sort = request.args.get('sort')
     prop = get_property_by_identifier(sort)
     if not prop:
         sort = PROPERTY_TYPES_2[0].identifier
 
-    order = 'desc' if request.args.get('order') == 'desc' else 'asc'
+    order = 'DESC' if request.args.get('order') == 'desc' else 'ASC'
 
     request_filter = {}
     if 'filter' in request.args:
@@ -86,18 +86,38 @@ def get_items():
                 continue
 
             request_filter[category] = identifier
-            print(request_filter)
 
-    connection = sqlite3.connect('sortiment.db')
-    cur = connection.cursor()
+    search = request.args.get('search', '')
+    search = ''.join([c for c in search if c.isalnum()])
 
-    #cols = [p.identifier for p in PROPERTY_TYPES_2]
-
-    where_clause = ''
+    # Create where clause
+    where_filter_expressions = []
     if request_filter:
         # Todo: Possible future SQL injection
-        where_clause += ' WHERE '
-        where_clause += ' AND '.join(["{}='{}'".format(name, value) for name, value in request_filter.items()])
+        where_filter_expressions = ["{}='{}'".format(name, value) for name, value in request_filter.items()]
+
+    where_search_expressions = []
+    if search:
+        # Todo: Possible future SQL injection
+        if search.isdigit():
+            # Might be identifier
+            where_search_expressions.append("nr = '{}'".format(search))
+            where_search_expressions.append("Artikelid = '{}'".format(search))
+            where_search_expressions.append("Varnummer = '{}'".format(search))
+
+        # Todo: This search method might be slow
+        where_search_expressions.append("Namn LIKE '%{}%'".format(search))
+        where_search_expressions.append("Namn2 LIKE '%{}%'".format(search))
+
+    where_clause = ''
+    if where_filter_expressions or where_search_expressions:
+        where_clause = 'WHERE '
+        where_clause += ' AND '.join(where_filter_expressions)
+        where_clause += ' OR '.join(where_search_expressions)
+
+    # Connect to database
+    connection = sqlite3.connect('sortiment.db')
+    cur = connection.cursor()
 
     # Count records
     cur.execute('SELECT COUNT(*) FROM sortiment {}'.format(where_clause))
@@ -105,10 +125,9 @@ def get_items():
 
     # Grab records
     # Todo: Possible future SQL injection
-    query_str = 'SELECT * FROM sortiment {} ORDER BY ? {} LIMIT ? OFFSET ?'.format(where_clause, order)
-    print(query_str)
-    print((sort, limit, offset))
-    q = cur.execute(query_str, (sort, limit, offset))
+    query_str = ('SELECT * FROM sortiment {} ORDER BY {} {} LIMIT {} OFFSET {}'
+                 .format(where_clause, sort, order, limit, offset))
+    q = cur.execute(query_str)
 
     data = []
     for row in q:
