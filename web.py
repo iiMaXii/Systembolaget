@@ -70,6 +70,8 @@ def get_items():
 
     order = 'DESC' if request.args.get('order') == 'desc' else 'ASC'
 
+    search = request.args.get('search', '')
+
     request_filter = {}
     if 'filter' in request.args:
         try:
@@ -81,13 +83,16 @@ def get_items():
             request_filter_input = {}
 
         for category, identifier in request_filter_input.items():
+            if search == identifier:
+                # To fix bug in Bootstrap table plugin
+                search = ''
+
             prop = get_property_by_identifier(category)
             if not prop or prop.type != PropertyType.CATEGORY:
                 continue
 
             request_filter[category] = identifier
 
-    search = request.args.get('search', '')
     search = ''.join([c for c in search if c.isalnum()])
 
     # Create where clause
@@ -113,6 +118,10 @@ def get_items():
     if where_filter_expressions or where_search_expressions:
         where_clause = 'WHERE '
         where_clause += ' AND '.join(where_filter_expressions)
+
+        if where_filter_expressions and where_search_expressions:
+            where_clause += ' AND '
+
         where_clause += ' OR '.join(where_search_expressions)
 
     # Connect to database
@@ -120,6 +129,7 @@ def get_items():
     cur = connection.cursor()
 
     # Count records
+    print('SELECT COUNT(*) FROM sortiment {}'.format(where_clause))
     cur.execute('SELECT COUNT(*) FROM sortiment {}'.format(where_clause))
     total_records = cur.fetchone()[0]
 
