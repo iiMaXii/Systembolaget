@@ -5,6 +5,7 @@ import xml.etree.ElementTree
 import common
 import unicodedata
 import re
+import urllib.request
 from common import PROPERTY_TYPES_2
 from common import PropertyType
 from common import VARUGRUPP_URL
@@ -110,8 +111,8 @@ def parse_property(property_value: str, property_type: PropertyType,
         return property_value
 
 
-def get_items(assortment_file) -> SystembolagetSortiment:
-    e = xml.etree.ElementTree.parse(assortment_file).getroot()
+def get_items(assortment_xml: str) -> SystembolagetSortiment:
+    e = xml.etree.ElementTree.fromstring(assortment_xml)
 
     created = e.find('skapad-tid').text
     message = e.find('info').find('meddelande').text
@@ -159,7 +160,10 @@ if __name__ == "__main__":
 
     create_tables(conn)
 
-    items = get_items('Sortimentsfilen.xml')
+    data = urllib.request.urlopen(
+        'https://www.systembolaget.se/api/assortment/products/xml').read()
+
+    items = get_items(data)
 
     add_items(conn, items)
 
