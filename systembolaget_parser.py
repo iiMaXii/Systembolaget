@@ -6,7 +6,7 @@ import common
 import unicodedata
 import re
 import urllib.request
-from common import PROPERTY_TYPES_2
+from common import PROPERTY_TYPES
 from common import PropertyType
 from common import VARUGRUPP_URL
 
@@ -38,26 +38,19 @@ def get_url(nr, varugrupp, name: str):
     return ('https://www.systembolaget.se/dryck/{}/{}-{}'
             .format(category_serialized, name, nr))
 
-#import sys
-#print(get_url('54502', 'Punsch', 'Tegnér & Son Punsch'))
-#print(get_url('8629102', 'Tequila och Mezcal', 'Los Tres Toños'))
-#sys.exit()
-
 
 def calculate_alcohol_per_sek(volume: int, price: int,
                               alcohol_percentage: int):
     alcohol_ratio = alcohol_percentage / 100 / 100
-    #volume = volume / 100
-    #price = price / 100
     return int(100 * round((volume * alcohol_ratio) / price, 2))
 
 
 def create_tables(conn: sqlite3.Connection):
     expr = []
-    for p in PROPERTY_TYPES_2:
+    for p in PROPERTY_TYPES:
         expr.append('{} {}'.format(p.identifier, common.get_type_str(p.type)))
 
-    expr.append('PRIMARY KEY ({})'.format(PROPERTY_TYPES_2[0].identifier))
+    expr.append('PRIMARY KEY ({})'.format(PROPERTY_TYPES[0].identifier))
 
     cursor = conn.cursor()
     main_table = ('CREATE TABLE sortiment ({})'.format(', \n'.join(expr)))
@@ -72,7 +65,7 @@ def add_items(conn: sqlite3.Connection, items: SystembolagetSortiment):
     insertion_list = []
     for item in items.items:
         row = []
-        for p in PROPERTY_TYPES_2:
+        for p in PROPERTY_TYPES:
             if p.identifier in item:
                 row.append(item[p.identifier])
             else:
@@ -81,15 +74,14 @@ def add_items(conn: sqlite3.Connection, items: SystembolagetSortiment):
         insertion_list.append(row)
 
     cur.executemany('INSERT INTO sortiment({}) values ({})'
-                    .format(', '.join([p.identifier for p in PROPERTY_TYPES_2]),
-                            ', '.join('?' * len(PROPERTY_TYPES_2))),
+                    .format(', '.join([p.identifier for p in PROPERTY_TYPES]),
+                            ', '.join('?' * len(PROPERTY_TYPES))),
                     insertion_list)
 
     conn.commit()
 
 
-def parse_property(property_value: str, property_type: PropertyType,
-                   property_name: str, property_categories: dict):
+def parse_property(property_value: str, property_type: PropertyType):
     if property_type == PropertyType.INTEGER:
         if not property_value:
             return None
@@ -125,7 +117,7 @@ def get_items(assortment_xml: str) -> SystembolagetSortiment:
 
         for xml_prop in article:
             prop = None
-            for p in PROPERTY_TYPES_2:
+            for p in PROPERTY_TYPES:
                 if p.identifier == xml_prop.tag:
                     prop = p
                     break
@@ -141,9 +133,7 @@ def get_items(assortment_xml: str) -> SystembolagetSortiment:
                     property_categories[xml_prop.tag] = names
 
             item_properties[xml_prop.tag] = parse_property(xml_prop.text,
-                                                           prop.type,
-                                                           xml_prop.tag,
-                                                           property_categories)
+                                                           prop.type)
 
         a = calculate_alcohol_per_sek(item_properties['Volymiml'],
                                       item_properties['Prisinklmoms'],

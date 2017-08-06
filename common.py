@@ -24,7 +24,7 @@ class SystembolagetProperty:
         self.visible = visible
 
 
-PROPERTY_TYPES_2 = [
+PROPERTY_TYPES = [
     SystembolagetProperty('nr', PropertyType.INTEGER, 'Nummer', False),
     SystembolagetProperty('Artikelid', PropertyType.INTEGER, 'Artikelnummer', False),
     SystembolagetProperty('Varnummer', PropertyType.INTEGER, 'Varnummer', False),
@@ -107,7 +107,7 @@ VARUGRUPP_URL = {
 
 
 def get_property_by_identifier(identifier: str) -> SystembolagetProperty:
-    for p in PROPERTY_TYPES_2:
+    for p in PROPERTY_TYPES:
         if identifier == p.identifier:
             return p
 
@@ -131,8 +131,6 @@ def format_value(value, property_type: PropertyType):
     elif property_type == PropertyType.PRICE:
         if not value:
             return ''
-
-        #s = str(value)
         return '{} kr'.format(format_real(value))
     elif property_type == PropertyType.PRICE_PER_LITER:
         return '{} kr/l'.format(format_real(value))

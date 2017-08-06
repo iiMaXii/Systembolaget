@@ -8,7 +8,7 @@ from flask import render_template
 from flask import jsonify
 from flask import request
 
-from common import PROPERTY_TYPES_2
+from common import PROPERTY_TYPES
 from common import SystembolagetProperty
 from common import PropertyType
 from common import get_property_by_identifier
@@ -28,8 +28,9 @@ def parse_int(s: str, default: int):
 @app.route('/')
 def get_index():
     # TODO add type_name
-    prop_types = copy.deepcopy(PROPERTY_TYPES_2)
-    prop_types.append(SystembolagetProperty('url', PropertyType.URL, 'URL', True))
+    prop_types = copy.deepcopy(PROPERTY_TYPES)
+    prop_types.append(SystembolagetProperty('url', PropertyType.URL, 'URL',
+                                            True))
 
     for p in prop_types:
         p.type = p.type.name
@@ -66,7 +67,7 @@ def get_items():
     sort = request.args.get('sort')
     prop = get_property_by_identifier(sort)
     if not prop:
-        sort = PROPERTY_TYPES_2[0].identifier
+        sort = PROPERTY_TYPES[0].identifier
 
     order = 'DESC' if request.args.get('order') == 'desc' else 'ASC'
 
@@ -99,7 +100,8 @@ def get_items():
     where_filter_expressions = []
     if request_filter:
         # Todo: Possible future SQL injection
-        where_filter_expressions = ["{}='{}'".format(name, value) for name, value in request_filter.items()]
+        where_filter_expressions = ["{}='{}'".format(name, value) for name,
+                                    value in request_filter.items()]
 
     where_search_expressions = []
     if search:
@@ -142,7 +144,7 @@ def get_items():
     data = []
     for row in q:
         row_data = {}
-        for raw_value, p in zip(row, PROPERTY_TYPES_2):
+        for raw_value, p in zip(row, PROPERTY_TYPES):
             value = format_value(raw_value, p.type)
 
             row_data[p.identifier] = value
